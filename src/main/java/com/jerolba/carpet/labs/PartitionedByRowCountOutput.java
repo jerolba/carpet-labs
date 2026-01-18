@@ -1,16 +1,16 @@
 package com.jerolba.carpet.labs;
 
-public class PartitionedByNumberRecordsOutput implements CarpetOutput {
+public class PartitionedByRowCountOutput implements CarpetOutput {
 
     private final SimpleFileNameGenerator fileNameGenerator;
     private final OutputFileFunction outputFileFunction;
-    private final long maxRecordsPerFile;
+    private final long maxRowsPerFile;
 
-    public PartitionedByNumberRecordsOutput(long maxRecordsPerFile,
+    public PartitionedByRowCountOutput(long maxRowsPerFile,
             SimpleFileNameGenerator fileNameGenerator, OutputFileFunction outputFileFunction) {
         this.fileNameGenerator = fileNameGenerator;
         this.outputFileFunction = outputFileFunction;
-        this.maxRecordsPerFile = maxRecordsPerFile;
+        this.maxRowsPerFile = maxRowsPerFile;
     }
 
     public SimpleFileNameGenerator fileNameGenerator() {
@@ -21,8 +21,8 @@ public class PartitionedByNumberRecordsOutput implements CarpetOutput {
         return outputFileFunction;
     }
 
-    public long maxRecordsPerFile() {
-        return maxRecordsPerFile;
+    public long maxRowsPerFile() {
+        return maxRowsPerFile;
     }
 
 }

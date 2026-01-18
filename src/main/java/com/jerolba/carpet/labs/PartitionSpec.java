@@ -21,7 +21,7 @@ class PartitionSpec<T> {
             throw new IllegalArgumentException("Partition value cannot be null or empty for key: " + keyName);
         }
         PartitionValue pv = encodedValues.computeIfAbsent(value,
-                v -> new PartitionValue(keyName, value, "/" + keyName + "=" + PartitionValueEncoder.encode(v)));
+                v -> new PartitionValue(keyName, value, keyName + "=" + PartitionValueEncoder.encode(v) + "/"));
         return pv.partitionValue();
     }
 

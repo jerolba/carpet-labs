@@ -2,23 +2,15 @@ package com.jerolba.carpet.labs;
 
 import java.io.IOException;
 
-import org.apache.parquet.hadoop.ParquetFileWriter.Mode;
 import org.apache.parquet.hadoop.ParquetWriter;
-import org.apache.parquet.hadoop.metadata.CompressionCodecName;
-import org.apache.parquet.io.OutputFile;
-
-import com.jerolba.carpet.CarpetParquetWriter;
 
 class CarpetSimpleWriter<T> {
 
     private final ParquetWriter<T> parquetWriter;
     private long recordCount;
 
-    public CarpetSimpleWriter(Class<T> clazz, OutputFile outputFile) throws IOException {
-        this.parquetWriter = CarpetParquetWriter.builder(outputFile, clazz)
-                .withWriteMode(Mode.OVERWRITE)
-                .withCompressionCodec(CompressionCodecName.SNAPPY)
-                .build();
+    public CarpetSimpleWriter(ParquetWriter<T> parquetWriter) throws IOException {
+        this.parquetWriter = parquetWriter;
         this.recordCount = 0;
     }
 

@@ -4,22 +4,26 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.Iterator;
 
+import org.apache.parquet.io.OutputFile;
+
 class PartitionedBySizeCarpetWriter<T> implements PartitionWriter<T> {
 
-    private final Class<T> recordClass;
+    private final ParquetWriterFunction<T> writerFunction;
     private final Iterator<String> fileNameGenerator;
     private final OutputFileFunction outputFileFunction;
     private final long maxFileSize;
 
     private CarpetSimpleWriter<T> currentWriter;
 
-    public PartitionedBySizeCarpetWriter(Class<T> recordClass, PartitionedBySizeOutput config)
+    private long recordRate = 128;
+
+    public PartitionedBySizeCarpetWriter(ParquetWriterFunction<T> writerFunction, PartitionedBySizeOutput config)
             throws IOException {
-        this.recordClass = recordClass;
+        this.writerFunction = writerFunction;
         this.maxFileSize = config.maxFileSize();
         this.fileNameGenerator = config.fileNameGenerator().newInstance();
         this.outputFileFunction = config.outputFileFunction();
-        this.currentWriter = createWriter();
+        createWriter();
     }
 
     @Override
@@ -30,8 +34,28 @@ class PartitionedBySizeCarpetWriter<T> implements PartitionWriter<T> {
         currentWriter.write(item);
     }
 
-    private boolean needsRotation() {
-        return currentWriter.writtenBytes() >= maxFileSize;
+    private boolean needsRotation() throws IOException {
+        long writtenRecords = currentWriter.writtenRecords();
+        if (writtenRecords % recordRate == 0) {
+            long writtenBytes = currentWriter.writtenBytes();
+            if (writtenBytes > maxFileSize) {
+                return true;
+            }
+
+            double percentWritten = (double) writtenBytes / maxFileSize * 100;
+            double averageBytesPerRecord = (double) writtenBytes / writtenRecords;
+            double estimatedNumberRecords = maxFileSize / averageBytesPerRecord;
+            long tenPercentRecords = (long) (estimatedNumberRecords * 0.1);
+
+            if (percentWritten > 99.0) {
+                recordRate = 100;
+            } else if (percentWritten > 80.0) {
+                recordRate = (long) (estimatedNumberRecords * 0.01);
+            } else if (percentWritten < 20.0 && tenPercentRecords > 0) {
+                recordRate = Math.min(tenPercentRecords, recordRate * 2);
+            }
+        }
+        return false;
     }
 
     @Override
@@ -48,12 +72,13 @@ class PartitionedBySizeCarpetWriter<T> implements PartitionWriter<T> {
 
     private void rotate() throws IOException {
         currentWriter.close();
-        currentWriter = createWriter();
+        createWriter();
     }
 
-    private CarpetSimpleWriter<T> createWriter() throws IOException {
+    private void createWriter() throws IOException {
         String fileName = fileNameGenerator.next();
-        return new CarpetSimpleWriter<>(recordClass, outputFileFunction.buildOutputFile(fileName));
+        OutputFile outputFile = outputFileFunction.buildOutputFile(fileName);
+        this.currentWriter = new CarpetSimpleWriter<>(writerFunction.buildParquetWriter(outputFile));
     }
 
 }

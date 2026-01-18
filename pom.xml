@@ -6,13 +6,13 @@
     <properties>
         <maven.compiler.target>17</maven.compiler.target>
         <maven.compiler.source>17</maven.compiler.source>
-        <junit.version>5.13.0</junit.version>
+        <junit.version>5.14.2</junit.version>
     </properties>
     <dependencies>
         <dependency>
             <groupId>com.jerolba</groupId>
             <artifactId>carpet-record</artifactId>
-            <version>0.5.0</version>
+            <version>0.6.1-SNAPSHOT</version>
         </dependency>
 
         <!-- JUnit 5 -->

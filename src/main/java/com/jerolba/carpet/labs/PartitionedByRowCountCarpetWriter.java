@@ -4,22 +4,25 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.Iterator;
 
-class PartitionedByNumberRecordsCarpetWriter<T> implements PartitionWriter<T> {
+import org.apache.parquet.hadoop.ParquetWriter;
+import org.apache.parquet.io.OutputFile;
 
-    private final Class<T> recordClass;
+class PartitionedByRowCountCarpetWriter<T> implements PartitionWriter<T> {
+
+    private final ParquetWriterFunction<T> writerFunction;
     private final Iterator<String> fileNameGenerator;
     private final OutputFileFunction outputFileFunction;
-    private final long maxRecordsPerFile;
+    private final long maxRowsPerFile;
 
     private CarpetSimpleWriter<T> currentWriter;
 
-    public PartitionedByNumberRecordsCarpetWriter(Class<T> recordClass,
-            PartitionedByNumberRecordsOutput config)
+    public PartitionedByRowCountCarpetWriter(ParquetWriterFunction<T> writerFunction,
+            PartitionedByRowCountOutput config)
             throws IOException {
-        this.recordClass = recordClass;
+        this.writerFunction = writerFunction;
         this.fileNameGenerator = config.fileNameGenerator().newInstance();
         this.outputFileFunction = config.outputFileFunction();
-        this.maxRecordsPerFile = config.maxRecordsPerFile();
+        this.maxRowsPerFile = config.maxRowsPerFile();
         this.currentWriter = createWriter();
     }
 
@@ -32,7 +35,7 @@ class PartitionedByNumberRecordsCarpetWriter<T> implements PartitionWriter<T> {
     }
 
     private boolean needsRotation() {
-        return currentWriter.writtenRecords() >= maxRecordsPerFile;
+        return currentWriter.writtenRecords() >= maxRowsPerFile;
     }
 
     @Override
@@ -54,7 +57,9 @@ class PartitionedByNumberRecordsCarpetWriter<T> implements PartitionWriter<T> {
 
     private CarpetSimpleWriter<T> createWriter() throws IOException {
         String fileName = fileNameGenerator.next();
-        return new CarpetSimpleWriter<>(recordClass, outputFileFunction.buildOutputFile(fileName));
+        OutputFile outputFile = outputFileFunction.buildOutputFile(fileName);
+        ParquetWriter<T> parquetWriter = writerFunction.buildParquetWriter(outputFile);
+        return new CarpetSimpleWriter<>(parquetWriter);
     }
 
 }

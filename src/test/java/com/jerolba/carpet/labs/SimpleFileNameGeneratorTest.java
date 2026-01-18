@@ -11,8 +11,6 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
-import com.jerolba.carpet.labs.SimpleFileNameGenerator;
-
 public class SimpleFileNameGeneratorTest {
 
     @Test

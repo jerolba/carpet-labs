@@ -10,7 +10,7 @@ public class CarpetOutputBuilder {
         return new PartitionedBySizeBuilder(size);
     }
 
-    public static PartitionedByNumberRecordsBuilder partitionedByNumberRecords(long numberRecords) {
+    public static PartitionedByNumberRecordsBuilder partitionedByRowCount(long numberRecords) {
         return new PartitionedByNumberRecordsBuilder(numberRecords);
     }
 
@@ -18,10 +18,14 @@ public class CarpetOutputBuilder {
         return new PartitionedByValueBuilder<T>().withRule(keyName, extractor);
     }
 
+    public static <T> PartitionedByValueBuilder<T> partitionedByValue(Class<T> type) {
+        return new PartitionedByValueBuilder<>();
+    }
+
     public static class PartitionedBySizeBuilder {
 
         private final long size;
-        private String fileNameTemplate;
+        private String fileNameTemplate = "{i}.parquet";
         private OutputFileFunction outputFileFunction;
 
         private PartitionedBySizeBuilder(long size) {
@@ -50,7 +54,7 @@ public class CarpetOutputBuilder {
     public static class PartitionedByNumberRecordsBuilder {
 
         private final long numberRecords;
-        private String fileNameTemplate;
+        private String fileNameTemplate = "{i}.parquet";
         private OutputFileFunction outputFileFunction;
 
         private PartitionedByNumberRecordsBuilder(long numberRecords) {
@@ -67,8 +71,8 @@ public class CarpetOutputBuilder {
             return this;
         }
 
-        public PartitionedByNumberRecordsOutput build() {
-            return new PartitionedByNumberRecordsOutput(
+        public PartitionedByRowCountOutput build() {
+            return new PartitionedByRowCountOutput(
                     numberRecords,
                     new SimpleFileNameGenerator(fileNameTemplate),
                     outputFileFunction);
@@ -79,7 +83,7 @@ public class CarpetOutputBuilder {
     public static class PartitionedByValueBuilder<T> {
 
         private final List<PartitionRule<T>> rules = new ArrayList<>();
-        private String fileNameTemplate;
+        private String fileNameTemplate = "{i}.parquet";
         private OutputFileFunction outputFileFunction;
         private int maxOpenFiles = 10;
 

@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.io.OutputFile;
 
 class PartitionedByValueCarpetWriter<T> implements PartitionWriter<T> {
@@ -16,11 +17,11 @@ class PartitionedByValueCarpetWriter<T> implements PartitionWriter<T> {
     private final PartitionPathBuilder<T> partitionPathBuilder;
     private final PartitionWriterRegistry<T> partitionWriterRegistry;
 
-    public PartitionedByValueCarpetWriter(Class<T> recordClass, PartitionedByValueOutput<T> config) {
+    public PartitionedByValueCarpetWriter(ParquetWriterFunction<T> writerFunction, PartitionedByValueOutput<T> config) {
         this.partitionPathBuilder = new PartitionPathBuilder<>(config.partitionRules());
         this.partitionWriterRegistry = new PartitionWriterRegistry<>(
                 config.maxOpenFiles(),
-                recordClass,
+                writerFunction,
                 config.outputFileFunction(),
                 config.fileNameGenerator());
     }
@@ -82,17 +83,18 @@ class PartitionedByValueCarpetWriter<T> implements PartitionWriter<T> {
     private static class PartitionWriterRegistry<T> {
 
         private final int maxOpenFiles;
-        private final Class<T> recordClass;
+        private final ParquetWriterFunction<T> writerFunction;
         private final OutputFileFunction outputFileFunction;
         private final SimpleFileNameGenerator simpleFileNameGenerator;
         private final Map<String, PartitionWriterEntry<T>> activeWriters;
         private final Map<String, PartitionWriterEntry<T>> evictedWriters;
         private final Counter counter = new Counter();
 
-        PartitionWriterRegistry(int maxOpenFiles, Class<T> recordClass,
-                OutputFileFunction outputFileFunction, SimpleFileNameGenerator simpleFileNameGenerator) {
+        PartitionWriterRegistry(int maxOpenFiles, ParquetWriterFunction<T> writerFunction,
+                OutputFileFunction outputFileFunction,
+                SimpleFileNameGenerator simpleFileNameGenerator) {
             this.maxOpenFiles = maxOpenFiles;
-            this.recordClass = recordClass;
+            this.writerFunction = writerFunction;
             this.outputFileFunction = outputFileFunction;
             this.simpleFileNameGenerator = simpleFileNameGenerator;
             this.activeWriters = new HashMap<>(maxOpenFiles);
@@ -108,8 +110,8 @@ class PartitionedByValueCarpetWriter<T> implements PartitionWriter<T> {
                 evictLRU();
             }
             PartitionWriterEntry<T> nonActive = evictedWriters.computeIfAbsent(partitionPath,
-                    path -> new PartitionWriterEntry<>(recordClass, outputFileFunction, simpleFileNameGenerator,
-                            counter));
+                    path -> new PartitionWriterEntry<>(writerFunction, partitionPath, outputFileFunction,
+                            simpleFileNameGenerator, counter));
             activeWriters.put(partitionPath, nonActive);
             nonActive.createNewWriter();
             return nonActive.getWriter();
@@ -153,16 +155,19 @@ class PartitionedByValueCarpetWriter<T> implements PartitionWriter<T> {
 
         static class PartitionWriterEntry<T> {
 
-            private final Class<T> recordClass;
+            private final ParquetWriterFunction<T> writerFunction;
+            private final String partitionPath;
             private final OutputFileFunction outputFileFunction;
             private final Iterator<String> nameIterator;
             private final Counter counter;
             private CarpetSimpleWriter<T> writer;
             private long lastAccessTime;
 
-            PartitionWriterEntry(Class<T> recordClass, OutputFileFunction outputFileFunction,
+            PartitionWriterEntry(ParquetWriterFunction<T> writerFunction, String partitionPath,
+                    OutputFileFunction outputFileFunction,
                     SimpleFileNameGenerator simpleFileNameGenerator, Counter counter) {
-                this.recordClass = recordClass;
+                this.writerFunction = writerFunction;
+                this.partitionPath = partitionPath;
                 this.outputFileFunction = outputFileFunction;
                 this.nameIterator = simpleFileNameGenerator.newInstance();
                 this.counter = counter;
@@ -170,8 +175,9 @@ class PartitionedByValueCarpetWriter<T> implements PartitionWriter<T> {
 
             void createNewWriter() throws IOException {
                 String fileName = nameIterator.next();
-                OutputFile outputFile = outputFileFunction.buildOutputFile(fileName);
-                writer = new CarpetSimpleWriter<>(recordClass, outputFile);
+                OutputFile outputFile = outputFileFunction.buildOutputFile(partitionPath + fileName);
+                ParquetWriter<T> parquetWriter = writerFunction.buildParquetWriter(outputFile);
+                writer = new CarpetSimpleWriter<>(parquetWriter);
             }
 
             CarpetSimpleWriter<T> getWriter() {
