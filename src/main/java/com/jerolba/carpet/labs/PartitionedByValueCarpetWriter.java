@@ -11,8 +11,12 @@ import java.util.Set;
 
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.io.OutputFile;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 class PartitionedByValueCarpetWriter<T> implements PartitionWriter<T> {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(PartitionedByValueCarpetWriter.class);
 
     private final PartitionPathBuilder<T> partitionPathBuilder;
     private final PartitionWriterRegistry<T> partitionWriterRegistry;
@@ -58,7 +62,7 @@ class PartitionedByValueCarpetWriter<T> implements PartitionWriter<T> {
             if (specs.size() == 1) {
                 return specs.get(0).apply(record);
             }
-            StringBuilder path = new StringBuilder();
+            StringBuilder path = new StringBuilder(60);
             for (PartitionSpec<T> spec : specs) {
                 path.append(spec.apply(record));
             }
@@ -122,6 +126,7 @@ class PartitionedByValueCarpetWriter<T> implements PartitionWriter<T> {
             for (PartitionWriterEntry<T> entry : activeWriters.values()) {
                 try {
                     entry.close();
+                    LOGGER.info("Closing writer {}", entry.outputFile.getPath());
                 } catch (Exception e) {
                     if (firstException == null) {
                         firstException = e;
@@ -149,7 +154,10 @@ class PartitionedByValueCarpetWriter<T> implements PartitionWriter<T> {
                     leastRecentlyUsed = entry;
                 }
             }
-            leastRecentlyUsed.getValue().close();
+            PartitionWriterEntry<T> lru = leastRecentlyUsed.getValue();
+            LOGGER.info("Evicting least recently used [{}] partition writer for path: {}", oldestAccessTime,
+                    lru.outputFile.getPath());
+            lru.close();
             activeWriters.remove(leastRecentlyUsed.getKey());
         }
 
@@ -161,6 +169,7 @@ class PartitionedByValueCarpetWriter<T> implements PartitionWriter<T> {
             private final Iterator<String> nameIterator;
             private final Counter counter;
             private CarpetSimpleWriter<T> writer;
+            private OutputFile outputFile;
             private long lastAccessTime;
 
             PartitionWriterEntry(ParquetWriterFunction<T> writerFunction, String partitionPath,
@@ -175,7 +184,10 @@ class PartitionedByValueCarpetWriter<T> implements PartitionWriter<T> {
 
             void createNewWriter() throws IOException {
                 String fileName = nameIterator.next();
-                OutputFile outputFile = outputFileFunction.buildOutputFile(partitionPath + fileName);
+                String fullPath = partitionPath + fileName;
+                LOGGER.info("Creating new partitioned file with name: {}", fullPath);
+                this.outputFile = outputFileFunction.buildOutputFile(fullPath);
+                LOGGER.info("Output file: {}", outputFile.getPath());
                 ParquetWriter<T> parquetWriter = writerFunction.buildParquetWriter(outputFile);
                 writer = new CarpetSimpleWriter<>(parquetWriter);
             }

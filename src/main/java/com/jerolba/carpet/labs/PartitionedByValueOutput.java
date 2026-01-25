@@ -6,13 +6,13 @@ public class PartitionedByValueOutput<T> implements CarpetOutput {
 
     private final List<PartitionRule<T>> partitionRules;
     private final SimpleFileNameGenerator fileNameGenerator;
-    private final OutputFileFunction outputFileFunction;
+    private final CreatedFilesHolder createdFilesHolder;
     private final int maxOpenFiles;
 
     public PartitionedByValueOutput(List<PartitionRule<T>> partitionRules,
             SimpleFileNameGenerator fileNameGenerator, OutputFileFunction outputFileFunction, int maxOpenFiles) {
         this.fileNameGenerator = fileNameGenerator;
-        this.outputFileFunction = outputFileFunction;
+        this.createdFilesHolder = new CreatedFilesHolder(outputFileFunction);
         this.partitionRules = partitionRules;
         this.maxOpenFiles = maxOpenFiles;
     }
@@ -22,7 +22,7 @@ public class PartitionedByValueOutput<T> implements CarpetOutput {
     }
 
     public OutputFileFunction outputFileFunction() {
-        return outputFileFunction;
+        return createdFilesHolder;
     }
 
     public List<PartitionRule<T>> partitionRules() {
@@ -31,6 +31,11 @@ public class PartitionedByValueOutput<T> implements CarpetOutput {
 
     public int maxOpenFiles() {
         return maxOpenFiles;
+    }
+
+    @Override
+    public List<String> getCreatedFiles() {
+        return createdFilesHolder.getCreatedFiles();
     }
 
 }

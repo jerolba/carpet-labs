@@ -2,13 +2,14 @@ package com.jerolba.carpet.labs;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.LocalDate;
 import java.util.Random;
 
 import com.jerolba.carpet.io.FileSystemOutputFile;
 
 public class PartitionedSizeExample {
 
-    record Sample(int id, String name, String value) {
+    record Sample(int id, String name, LocalDate date) {
     }
 
     public static void main(String[] args) throws IOException {
@@ -24,9 +25,15 @@ public class PartitionedSizeExample {
                 .withOutput(bySizeOutput)
                 .build()) {
             for (int i = 0; i < 123_456_789; i++) {
-                writer.write(new Sample(i, Integer.toString(rnd.nextInt(1000)), Integer.toString(rnd.nextInt(10000))));
+                int year = 2020 + rnd.nextInt(2);
+                int month = 1 + rnd.nextInt(12);
+                LocalDate date = LocalDate.of(year, month, 1 + rnd.nextInt(28));
+                writer.write(new Sample(i, Integer.toString(rnd.nextInt(1000)), date));
             }
         }
 
+        for (var file : bySizeOutput.getCreatedFiles()) {
+            System.out.println("Created file: " + file);
+        }
     }
 }

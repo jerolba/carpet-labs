@@ -5,8 +5,12 @@ import java.util.Collection;
 import java.util.Iterator;
 
 import org.apache.parquet.io.OutputFile;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 class PartitionedBySizeCarpetWriter<T> implements PartitionWriter<T> {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(PartitionedBySizeCarpetWriter.class);
 
     private final ParquetWriterFunction<T> writerFunction;
     private final Iterator<String> fileNameGenerator;
@@ -67,17 +71,21 @@ class PartitionedBySizeCarpetWriter<T> implements PartitionWriter<T> {
 
     @Override
     public void close() throws IOException {
+        LOGGER.info("Closing writer for latest file after aprox {} bytes written", currentWriter.writtenBytes());
         currentWriter.close();
     }
 
     private void rotate() throws IOException {
+        LOGGER.info("Rotating file after aprox {} bytes written", currentWriter.writtenBytes());
         currentWriter.close();
         createWriter();
     }
 
     private void createWriter() throws IOException {
         String fileName = fileNameGenerator.next();
+        LOGGER.info("Creating new partitioned file with name: {}", fileName);
         OutputFile outputFile = outputFileFunction.buildOutputFile(fileName);
+        LOGGER.info("Output file: {}", outputFile.getPath());
         this.currentWriter = new CarpetSimpleWriter<>(writerFunction.buildParquetWriter(outputFile));
     }
 

@@ -1,15 +1,17 @@
 package com.jerolba.carpet.labs;
 
+import java.util.List;
+
 public class PartitionedByRowCountOutput implements CarpetOutput {
 
     private final SimpleFileNameGenerator fileNameGenerator;
-    private final OutputFileFunction outputFileFunction;
+    private final CreatedFilesHolder createdFilesHolder;
     private final long maxRowsPerFile;
 
     public PartitionedByRowCountOutput(long maxRowsPerFile,
             SimpleFileNameGenerator fileNameGenerator, OutputFileFunction outputFileFunction) {
         this.fileNameGenerator = fileNameGenerator;
-        this.outputFileFunction = outputFileFunction;
+        this.createdFilesHolder = new CreatedFilesHolder(outputFileFunction);
         this.maxRowsPerFile = maxRowsPerFile;
     }
 
@@ -18,11 +20,16 @@ public class PartitionedByRowCountOutput implements CarpetOutput {
     }
 
     public OutputFileFunction outputFileFunction() {
-        return outputFileFunction;
+        return createdFilesHolder;
     }
 
     public long maxRowsPerFile() {
         return maxRowsPerFile;
+    }
+
+    @Override
+    public List<String> getCreatedFiles() {
+        return createdFilesHolder.getCreatedFiles();
     }
 
 }

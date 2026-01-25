@@ -6,7 +6,7 @@ import org.apache.parquet.io.OutputFile;
 public interface OutputFileFunction {
 
     /**
-     * Given a file path, builds an OutputFile
+     * Given a composed file path, builds an OutputFile
      *
      * @param filePath
      * @return OutputFile

@@ -1,15 +1,17 @@
 package com.jerolba.carpet.labs;
 
+import java.util.List;
+
 public class PartitionedBySizeOutput implements CarpetOutput {
 
     private final long maxFileSize;
     private final SimpleFileNameGenerator fileNameGenerator;
-    private final OutputFileFunction outputFileFunction;
+    private final CreatedFilesHolder createdFilesHolder;
 
     public PartitionedBySizeOutput(long maxFileSize, SimpleFileNameGenerator fileNameGenerator,
             OutputFileFunction outputFileFunction) {
         this.fileNameGenerator = fileNameGenerator;
-        this.outputFileFunction = outputFileFunction;
+        this.createdFilesHolder = new CreatedFilesHolder(outputFileFunction);
         this.maxFileSize = maxFileSize;
     }
 
@@ -18,11 +20,16 @@ public class PartitionedBySizeOutput implements CarpetOutput {
     }
 
     public OutputFileFunction outputFileFunction() {
-        return outputFileFunction;
+        return createdFilesHolder;
     }
 
     public long maxFileSize() {
         return maxFileSize;
+    }
+
+    @Override
+    public List<String> getCreatedFiles() {
+        return createdFilesHolder.getCreatedFiles();
     }
 
 }
